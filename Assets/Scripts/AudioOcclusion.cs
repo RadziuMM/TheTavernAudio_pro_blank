@@ -1,97 +1,97 @@
 using UnityEngine;
 using FMODUnity;
 using FMOD.Studio;
+using UnityEngine.Serialization;
 
 public class AudioOcclusion : MonoBehaviour
 {
-    [Header("FMOD Event")]
-    [SerializeField]
+    [Header("FMOD Event")] [SerializeField]
     private StudioEventEmitter eventEmitterMusic;
-    private EventInstance eventInstance;
-    private EventDescription eventDes;
-    private StudioListener listener;
-    private PLAYBACK_STATE pb;
 
-    [Header("Occlusion Options")]
-    [SerializeField]
-    [Range(0f, 10f)]
-    private float SoundOcclusionWidening = 1f;
-    [SerializeField]
-    [Range(0f, 10f)]
-    private float PlayerOcclusionWidening = 1f;
-    [SerializeField]
-    private LayerMask OcclusionLayer;
+    private EventInstance _eventInstance;
+    private EventDescription _eventDes;
+    private StudioListener _listener;
+    private PLAYBACK_STATE _pb;
 
-    private bool audioIsVirtual;
-    private float minDistance;
-    private float maxDistance;
-    private float listenerDistance;
-    private float lineCastHitCount = 0f;
-    private Color colour;
+    [FormerlySerializedAs("SoundOcclusionWidening")] [Header("Occlusion Options")] [SerializeField] [Range(0f, 10f)]
+    private float soundOcclusionWidening = 1f;
+
+    [FormerlySerializedAs("PlayerOcclusionWidening")] [SerializeField] [Range(0f, 10f)]
+    private float playerOcclusionWidening = 1f;
+
+    [FormerlySerializedAs("OcclusionLayer")] [SerializeField]
+    private LayerMask occlusionLayer;
+
+    private bool _audioIsVirtual;
+    private float _minDistance;
+    private float _maxDistance;
+    private float _listenerDistance;
+    private float _lineCastHitCount;
+    private Color _colour;
 
     private void Start()
     {
-        eventInstance = eventEmitterMusic.EventInstance;
-        eventInstance.getDescription(out eventDes);
-        eventDes.getMinMaxDistance(out minDistance, out maxDistance);
+        _eventInstance = eventEmitterMusic.EventInstance;
+        _eventInstance.getDescription(out _eventDes);
+        _eventDes.getMinMaxDistance(out _minDistance, out _maxDistance);
 
-        listener = FindObjectOfType<StudioListener>();
+        _listener = FindObjectOfType<StudioListener>();
     }
 
     private void FixedUpdate()
     {
-        eventInstance.isVirtual(out audioIsVirtual); 
-        eventInstance.getPlaybackState(out pb);
-        listenerDistance = Vector3.Distance(transform.position, listener.transform.position);
+        _eventInstance.isVirtual(out _audioIsVirtual);
+        _eventInstance.getPlaybackState(out _pb);
+        _listenerDistance = Vector3.Distance(transform.position, _listener.transform.position);
 
-        if (!audioIsVirtual && pb == PLAYBACK_STATE.PLAYING && listenerDistance <= maxDistance)
-            OccludeBetween(transform.position, listener.transform.position);
+        if (!_audioIsVirtual && _pb == PLAYBACK_STATE.PLAYING && _listenerDistance <= _maxDistance)
+            OccludeBetween(transform.position, _listener.transform.position);
 
-        lineCastHitCount = 0f;
+        _lineCastHitCount = 0f;
     }
 
     private void OccludeBetween(Vector3 sound, Vector3 listener)
     {
-        var SoundLeft = CalculatePoint(sound, listener, SoundOcclusionWidening, true);
-        var SoundRight = CalculatePoint(sound, listener, SoundOcclusionWidening, false);
+        var soundLeft = CalculatePoint(sound, listener, soundOcclusionWidening, true);
+        var soundRight = CalculatePoint(sound, listener, soundOcclusionWidening, false);
 
-        var SoundAbove = new Vector3(sound.x, sound.y + SoundOcclusionWidening, sound.z);
-        var SoundBelow = new Vector3(sound.x, sound.y - SoundOcclusionWidening, sound.z);
+        var soundAbove = new Vector3(sound.x, sound.y + soundOcclusionWidening, sound.z);
+        var soundBelow = new Vector3(sound.x, sound.y - soundOcclusionWidening, sound.z);
 
-        var ListenerLeft = CalculatePoint(listener, sound, PlayerOcclusionWidening, true);
-        var ListenerRight = CalculatePoint(listener, sound, PlayerOcclusionWidening, false);
+        var listenerLeft = CalculatePoint(listener, sound, playerOcclusionWidening, true);
+        var listenerRight = CalculatePoint(listener, sound, playerOcclusionWidening, false);
 
-        var ListenerAbove = new Vector3(listener.x, listener.y + PlayerOcclusionWidening * 0.5f, listener.z);
-        var ListenerBelow = new Vector3(listener.x, listener.y - PlayerOcclusionWidening * 0.5f, listener.z);
+        var listenerAbove = new Vector3(listener.x, listener.y + playerOcclusionWidening * 0.5f, listener.z);
+        var listenerBelow = new Vector3(listener.x, listener.y - playerOcclusionWidening * 0.5f, listener.z);
 
-        CastLine(SoundLeft, ListenerLeft);
-        CastLine(SoundLeft, listener);
-        CastLine(SoundLeft, ListenerRight);
+        CastLine(soundLeft, listenerLeft);
+        CastLine(soundLeft, listener);
+        CastLine(soundLeft, listenerRight);
 
-        CastLine(sound, ListenerLeft);
+        CastLine(sound, listenerLeft);
         CastLine(sound, listener);
-        CastLine(sound, ListenerRight);
+        CastLine(sound, listenerRight);
 
-        CastLine(SoundRight, ListenerLeft);
-        CastLine(SoundRight, listener);
-        CastLine(SoundRight, ListenerRight);
+        CastLine(soundRight, listenerLeft);
+        CastLine(soundRight, listener);
+        CastLine(soundRight, listenerRight);
 
-        CastLine(SoundAbove, ListenerAbove);
-        CastLine(SoundBelow, ListenerBelow);
+        CastLine(soundAbove, listenerAbove);
+        CastLine(soundBelow, listenerBelow);
 
-        if (PlayerOcclusionWidening == 0f || SoundOcclusionWidening == 0f)
+        if (playerOcclusionWidening == 0f || soundOcclusionWidening == 0f)
         {
-            colour = Color.blue;
+            _colour = Color.blue;
         }
         else
         {
-            colour = Color.green;
+            _colour = Color.green;
         }
 
         SetParameter();
     }
 
-    private Vector3 CalculatePoint(Vector3 a, Vector3 b, float m, bool posOrneg)
+    private static Vector3 CalculatePoint(Vector3 a, Vector3 b, float m, bool posOrneg)
     {
         float x;
         float z;
@@ -107,24 +107,25 @@ public class AudioOcclusion : MonoBehaviour
             x = a.x - (mn * (a.z - b.z));
             z = a.z + (mn * (a.x - b.x));
         }
+
         return new Vector3(x, a.y, z);
     }
 
-    private void CastLine(Vector3 Start, Vector3 End)
+    private void CastLine(Vector3 start, Vector3 end)
     {
-        Physics.Linecast(Start, End, out var hit, OcclusionLayer);
+        Physics.Linecast(start, end, out var hit, occlusionLayer);
 
         if (hit.collider)
         {
-            lineCastHitCount++;
-            Debug.DrawLine(Start, End, Color.red);
+            _lineCastHitCount++;
+            Debug.DrawLine(start, end, Color.red);
         }
         else
-            Debug.DrawLine(Start, End, colour);
+            Debug.DrawLine(start, end, _colour);
     }
 
     private void SetParameter()
     {
-        eventInstance.setParameterByName("Occlusion", lineCastHitCount / 11);
+        _eventInstance.setParameterByName("Occlusion", _lineCastHitCount / 11);
     }
 }
