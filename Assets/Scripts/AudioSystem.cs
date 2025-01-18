@@ -1,49 +1,36 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using FMODUnity;
-using System.Threading;
-using Unity.VisualScripting;
 using FMOD.Studio;
 
 public class AudioSystem : MonoBehaviour
 {
-    // EMITTERS //
-    public FMODUnity.StudioEventEmitter TavernMusic; // œcie¿ka do event emittera na scenie
-    public StudioEventEmitter TavernAmb;
+    public StudioEventEmitter TavernMusic;
     public StudioEventEmitter TavernFireplace;
-    public StudioEventEmitter OutsideAmb;
 
-    //AudioControl tavernMusic = FindObjectOfType<AudioControl>(); Odwo³ywanie siê do zewnêtrznego skryptu
-    //tavernMusic.tavernMusic.IsPlaying();
-
-    // EVENTS //
-    FMOD.Studio.EventInstance DoorsSound;
+    EventInstance DoorsSound;
     public EventReference doorsEvent;
-    FMOD.Studio.EventInstance FootstepsSound;
+    EventInstance FootstepsSound;
     public EventReference footstepsEvent;
-    FMOD.Studio.EventInstance JumpSound;
+    EventInstance JumpSound;
     public EventReference jumpEvent;
-    FMOD.Studio.EventInstance LandSound;
+    EventInstance LandSound;
     public EventReference landEvent;
-    public FMOD.Studio.EventInstance SpellSound;
+    public EventInstance SpellSound;
     public EventReference spellEvent;
 
-    // SNAPSHOTS //
-    FMOD.Studio.EventInstance InsideRoom;
+    EventInstance InsideRoom;
     public EventReference insideRoomSnap;
-    public FMOD.Studio.EventInstance Outside;
+    public EventInstance Outside;
     public EventReference outsideSnapshot;
-    FMOD.Studio.EventInstance HealthSnapshot;
+    EventInstance HealthSnapshot;
     public EventReference healthSnapshot;
 
-    // VCA // 
-    public FMOD.Studio.VCA GlobalVCA; // klasa VCA
-    public FMOD.Studio.VCA MusicVCA;
-    public FMOD.Studio.VCA TavernVCA;
-    public FMOD.Studio.VCA OutsideVCA;
+    public VCA GlobalVCA;
+    public VCA MusicVCA;
+    public VCA TavernVCA;
+    public VCA OutsideVCA;
 
-    // STRING NAMES // 
+
     private string footsteps_surface;
     public string doorsName;
     private string open;
@@ -75,10 +62,10 @@ public class AudioSystem : MonoBehaviour
     void Start()
     {
         // VCA SETUP //
-        GlobalVCA = FMODUnity.RuntimeManager.GetVCA("vca:/Mute"); // podanie klasie VCA œcie¿ki do wybranego eventu / snapshotu
-        MusicVCA = FMODUnity.RuntimeManager.GetVCA("vca:/Music");
-        TavernVCA = FMODUnity.RuntimeManager.GetVCA("vca:/Tavern_amb");
-        OutsideVCA = FMODUnity.RuntimeManager.GetVCA("vca:/Outside_amb");
+        GlobalVCA = RuntimeManager.GetVCA("vca:/Mute"); // podanie klasie VCA Å›cieÅ¼ki do wybranego eventu / snapshotu
+        MusicVCA = RuntimeManager.GetVCA("vca:/Music");
+        TavernVCA = RuntimeManager.GetVCA("vca:/Tavern_amb");
+        OutsideVCA = RuntimeManager.GetVCA("vca:/Outside_amb");
         GlobalVCA.setVolume(DecibelToLinear(-100));
 
         // START SETUP //
@@ -141,11 +128,11 @@ public class AudioSystem : MonoBehaviour
     }
 
     // DOORS SOUNDS //
-    void DoorsManager(ref FMOD.Studio.EventInstance doorSoundInstance, int doorsNumber, string doorState)
+    void DoorsManager(ref EventInstance doorSoundInstance, int doorsNumber, string doorState)
     {
-        doorSoundInstance = FMODUnity.RuntimeManager.CreateInstance(doorsEvent);
+        doorSoundInstance = RuntimeManager.CreateInstance(doorsEvent);
         doorSoundInstance.setParameterByNameWithLabel("Doors", doorState);
-        doorSoundInstance.set3DAttributes(FMODUnity.RuntimeUtils.To3DAttributes(gameObject.transform));
+        doorSoundInstance.set3DAttributes(RuntimeUtils.To3DAttributes(gameObject.transform));
         doorSoundInstance.start();
         doorSoundInstance.release();
 
@@ -184,61 +171,49 @@ public class AudioSystem : MonoBehaviour
     // FOOTSTEPS SOUNDS // 
     public void PlayFootsteps()
     {
-        RaycastHit hit;
-
-        if (Physics.Raycast(transform.position, Vector3.down, out hit, distToGround + 0.5f))
+        if (!Physics.Raycast(transform.position, Vector3.down, out var hit, distToGround + 0.5f)) return;
+        var surfaceType = hit.collider.tag switch
         {
-            string surfaceType = "Stone"; // Default surface type
-            switch (hit.collider.tag)
-            {
-                case "Wood":
-                    surfaceType = "Wood";
-                    break;
-                case "Stone":
-                case "Outside":
-                case "Inside_stone":
-                    surfaceType = "Stone";
-                    break;
-            }
+            "Wood" => "Wood",
+            "Stone" or "Outside" or "Inside_stone" => "Stone",
+            _ => "Stone"
+        };
 
-            FootstepsSound = FMODUnity.RuntimeManager.CreateInstance(footstepsEvent);
-            FootstepsSound.set3DAttributes(FMODUnity.RuntimeUtils.To3DAttributes(gameObject.transform));
-            FootstepsSound.setParameterByNameWithLabel(footsteps_surface, surfaceType);
-            FootstepsSound.start();
-            FootstepsSound.release();
-        }
+        FootstepsSound = RuntimeManager.CreateInstance(footstepsEvent);
+        FootstepsSound.set3DAttributes(RuntimeUtils.To3DAttributes(gameObject.transform));
+        FootstepsSound.setParameterByNameWithLabel(footsteps_surface, surfaceType);
+        FootstepsSound.start();
+        FootstepsSound.release();
     }
 
     // JUMP SOUNDS //
     public void PlayJump()
     {
+        if (!IsGrounded()) return;
+        JumpSound = RuntimeManager.CreateInstance(jumpEvent); // "event:/Footsteps"
+
         if (IsGrounded())
         {
-            JumpSound = FMODUnity.RuntimeManager.CreateInstance(jumpEvent); // "event:/Footsteps"
-
-            if (IsGrounded())
+            RaycastHit hit;
+            if (Physics.Raycast(transform.position, Vector3.down, out hit, distToGround + 0.5f))
             {
-                RaycastHit hit;
-                if (Physics.Raycast(transform.position, Vector3.down, out hit, distToGround + 0.5f))
+                string surface = hit.collider.tag switch
                 {
-                    string surface = hit.collider.tag switch
-                    {
-                        "Stone" => "Stone",
-                        "Wood" => "Wood",
-                        "Inside_stone" => "Stone",
-                        "Bed" => "Bed",
-                        _ => "Stone"
-                    };
+                    "Stone" => "Stone",
+                    "Wood" => "Wood",
+                    "Inside_stone" => "Stone",
+                    "Bed" => "Bed",
+                    _ => "Stone"
+                };
 
-                    JumpSound.setParameterByNameWithLabel(footsteps_surface, surface);
-                    JumpSound.start();
-                }
+                JumpSound.setParameterByNameWithLabel(footsteps_surface, surface);
+                JumpSound.start();
             }
-
-            JumpSound.release();
-            isGrounded = false;
-            isJumping = true;
         }
+
+        JumpSound.release();
+        isGrounded = false;
+        isJumping = true;
     }
 
     // LAND SOUNDS //
@@ -248,7 +223,7 @@ public class AudioSystem : MonoBehaviour
         {
             if (isJumping)
             {
-                LandSound = FMODUnity.RuntimeManager.CreateInstance(landEvent);
+                LandSound = RuntimeManager.CreateInstance(landEvent);
                 RaycastHit hit;
 
                 if (Physics.Raycast(transform.position, Vector3.down, out hit, distToGround + 0.5f))
@@ -277,14 +252,14 @@ public class AudioSystem : MonoBehaviour
     public void SpellCast()
     {
         SpellSound = RuntimeManager.CreateInstance(spellEvent);
-        SpellSound.setParameterByNameWithLabel("Spell", "Looping");
+        SpellSound.setParameterByNameWithLabel("throwSpell", "false");
         SpellSound.start();
         SpellSound.release();
     }
 
     public void SpellRelease()
     {
-        SpellSound.setParameterByNameWithLabel("Spell", "Release");
+        SpellSound.setParameterByNameWithLabel("throwSpell", "true");
         SpellSound.release();
     }
 
@@ -298,7 +273,7 @@ public class AudioSystem : MonoBehaviour
             if (hit.collider.CompareTag("Outside") && outsideSnapActivated == false)
             {
                 // mechanika snapshotu
-                Outside = FMODUnity.RuntimeManager.CreateInstance(outsideSnapshot);
+                Outside = RuntimeManager.CreateInstance(outsideSnapshot);
                 Outside.start();
                 outsideSnapActivated = !outsideSnapActivated;
                 Debug.Log(outsideSnapActivated);
@@ -334,7 +309,7 @@ public class AudioSystem : MonoBehaviour
 
         if (!InsideRoom.isValid())
         {
-            InsideRoom = FMODUnity.RuntimeManager.CreateInstance(insideRoomSnap);
+            InsideRoom = RuntimeManager.CreateInstance(insideRoomSnap);
         }
         
         if (roomsAmbientActivated == true && doorsName == door_1 && doorsOpened_1 == false)
@@ -359,7 +334,7 @@ public class AudioSystem : MonoBehaviour
     {
         if (!healthSnapActive)
         {
-            HealthSnapshot = FMODUnity.RuntimeManager.CreateInstance(healthSnapshot);
+            HealthSnapshot = RuntimeManager.CreateInstance(healthSnapshot);
             HealthSnapshot.start();
             healthSnapActive = !healthSnapActive;
         }
@@ -372,7 +347,7 @@ public class AudioSystem : MonoBehaviour
     }
 
     // VCA // 
-    public void ToggleMute(KeyCode key, ref bool muteActive, FMOD.Studio.VCA vca)
+    public void ToggleMute(KeyCode key, ref bool muteActive, VCA vca)
     {
         if (Input.GetKeyDown(key))
         {

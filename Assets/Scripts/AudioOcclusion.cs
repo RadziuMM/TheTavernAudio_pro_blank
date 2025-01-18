@@ -1,14 +1,16 @@
 using UnityEngine;
 using FMODUnity;
 using FMOD.Studio;
-using System.ComponentModel;
 
 public class AudioOcclusion : MonoBehaviour
 {
-    #region KOD DO UZUPE£NIENIA // ENG - CODE TO COMPLETE
-
-
-    #endregion
+    [Header("FMOD Event")]
+    [SerializeField]
+    private StudioEventEmitter eventEmitterMusic;
+    private EventInstance eventInstance;
+    private EventDescription eventDes;
+    private StudioListener listener;
+    private PLAYBACK_STATE pb;
 
     [Header("Occlusion Options")]
     [SerializeField]
@@ -29,32 +31,17 @@ public class AudioOcclusion : MonoBehaviour
 
     private void Start()
     {
-        //Audio = RuntimeManager.CreateInstance(SelectAudio);
-        //RuntimeManager.AttachInstanceToGameObject(Audio, GetComponent<Transform>(), GetComponent<Rigidbody>());
-        //Audio.start();
-        //Audio.release();
-
-        //Audio.getDescription(out AudioDes);
-        //Audio.getMinMaxDistance(out MinDistance, out MaxDistance);
-
-        #region KOD DO UZUPE£NIENIA // ENG - CODE TO COMPLETE
-
-        eventInstance = ... ;
+        eventInstance = eventEmitterMusic.EventInstance;
         eventInstance.getDescription(out eventDes);
         eventDes.getMinMaxDistance(out minDistance, out maxDistance);
 
-        listener = ... ;
-
-        #endregion
+        listener = FindObjectOfType<StudioListener>();
     }
 
     private void FixedUpdate()
     {
-        eventInstance.isVirtual(out audioIsVirtual); // isVirtual oznacza, ¿e dŸwiêk nadal gra, ale gracz go nie s³yszy
-                                                     // w tej linii sprawdzamy czy dŸwiêk jest "wirtualny"
-                                                     // ENG - isVirtual means that the sound is still playing, but the player can't hear it
-                                                     // in this line we check if the sound is "virtual"
-        eventInstance.getPlaybackState(out pb);      // status odtwarzania: starting, playing, stopping, stopped, sustained
+        eventInstance.isVirtual(out audioIsVirtual); 
+        eventInstance.getPlaybackState(out pb);
         listenerDistance = Vector3.Distance(transform.position, listener.transform.position);
 
         if (!audioIsVirtual && pb == PLAYBACK_STATE.PLAYING && listenerDistance <= maxDistance)
@@ -65,17 +52,17 @@ public class AudioOcclusion : MonoBehaviour
 
     private void OccludeBetween(Vector3 sound, Vector3 listener)
     {
-        Vector3 SoundLeft = CalculatePoint(sound, listener, SoundOcclusionWidening, true);
-        Vector3 SoundRight = CalculatePoint(sound, listener, SoundOcclusionWidening, false);
+        var SoundLeft = CalculatePoint(sound, listener, SoundOcclusionWidening, true);
+        var SoundRight = CalculatePoint(sound, listener, SoundOcclusionWidening, false);
 
-        Vector3 SoundAbove = new Vector3(sound.x, sound.y + SoundOcclusionWidening, sound.z);
-        Vector3 SoundBelow = new Vector3(sound.x, sound.y - SoundOcclusionWidening, sound.z);
+        var SoundAbove = new Vector3(sound.x, sound.y + SoundOcclusionWidening, sound.z);
+        var SoundBelow = new Vector3(sound.x, sound.y - SoundOcclusionWidening, sound.z);
 
-        Vector3 ListenerLeft = CalculatePoint(listener, sound, PlayerOcclusionWidening, true);
-        Vector3 ListenerRight = CalculatePoint(listener, sound, PlayerOcclusionWidening, false);
+        var ListenerLeft = CalculatePoint(listener, sound, PlayerOcclusionWidening, true);
+        var ListenerRight = CalculatePoint(listener, sound, PlayerOcclusionWidening, false);
 
-        Vector3 ListenerAbove = new Vector3(listener.x, listener.y + PlayerOcclusionWidening * 0.5f, listener.z);
-        Vector3 ListenerBelow = new Vector3(listener.x, listener.y - PlayerOcclusionWidening * 0.5f, listener.z);
+        var ListenerAbove = new Vector3(listener.x, listener.y + PlayerOcclusionWidening * 0.5f, listener.z);
+        var ListenerBelow = new Vector3(listener.x, listener.y - PlayerOcclusionWidening * 0.5f, listener.z);
 
         CastLine(SoundLeft, ListenerLeft);
         CastLine(SoundLeft, listener);
@@ -108,8 +95,8 @@ public class AudioOcclusion : MonoBehaviour
     {
         float x;
         float z;
-        float n = Vector3.Distance(new Vector3(a.x, 0f, a.z), new Vector3(b.x, 0f, b.z));
-        float mn = (m / n);
+        var n = Vector3.Distance(new Vector3(a.x, 0f, a.z), new Vector3(b.x, 0f, b.z));
+        var mn = (m / n);
         if (posOrneg)
         {
             x = a.x + (mn * (a.z - b.z));
@@ -125,8 +112,7 @@ public class AudioOcclusion : MonoBehaviour
 
     private void CastLine(Vector3 Start, Vector3 End)
     {
-        RaycastHit hit;
-        Physics.Linecast(Start, End, out hit, OcclusionLayer);
+        Physics.Linecast(Start, End, out var hit, OcclusionLayer);
 
         if (hit.collider)
         {
@@ -139,10 +125,6 @@ public class AudioOcclusion : MonoBehaviour
 
     private void SetParameter()
     {
-        # region KOD DO UZUPE£NIENIA // ENG - CODE TO COMPLETE
-
-        eventInstance.setParameterByName(...);
-
-        #endregion
+        eventInstance.setParameterByName("Occlusion", lineCastHitCount / 11);
     }
 }
